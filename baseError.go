@@ -64,16 +64,12 @@ func (b *Error) WithCause(cause error) *Error {
 	return b
 }
 
-func (b *Error) WithStack() *Error {
-	b.stack = callers(3, 3)
-	return b
-}
-
-func (b *Error) WithStackDepth(stackDepth int) *Error {
-	if stackDepth <= 0 {
-		stackDepth = 1
+func (b *Error) WithStack(depth ...int) *Error {
+	var d = 3
+	if len(depth) > 0 && depth[0] > 0 {
+		d = depth[0]
 	}
-	b.stack = callers(3, stackDepth)
+	b.stack = callers(3, d)
 	return b
 }
 
@@ -141,18 +137,13 @@ func WithCause(cause error) Option {
 	}
 }
 
-func WithStack() Option {
+func WithStack(depth ...int) Option {
 	return func(opts *ErrorOption) {
-		opts.stackDepth = 3
-	}
-}
-
-func WithStackDepth(stackDepth int) Option {
-	return func(opts *ErrorOption) {
-		if stackDepth <= 0 {
-			stackDepth = 1
+		var d = 3
+		if len(depth) > 0 && depth[0] > 0 {
+			d = depth[0]
 		}
-		opts.stackDepth = stackDepth
+		opts.stackDepth = d
 	}
 }
 
