@@ -41,10 +41,10 @@ func IsNotSystemError(err error) bool {
 }
 
 type Error struct {
-	Code   string `json:"code"`
-	Msg    string `json:"msg"`
-	System bool   `json:"-"`
-	Chain  string `json:"-"`
+	Code   string   `json:"code"`
+	Msg    string   `json:"msg"`
+	System bool     `json:"-"`
+	Chain  []string `json:"-"`
 	cause  error
 	*stack
 }
@@ -55,7 +55,7 @@ func (b *Error) WithSystem() *Error {
 }
 
 func (b *Error) WithChain(chain ...string) *Error {
-	b.Chain = strings.Join(chain, "<-")
+	b.Chain = append(b.Chain, chain...)
 	return b
 }
 
@@ -74,7 +74,11 @@ func (b *Error) WithStack(depth ...int) *Error {
 }
 
 func (b *Error) Error() string {
-	return fmt.Sprintf("[%s] %s", b.Code, b.Msg)
+	if b.Code != "" {
+		return fmt.Sprintf("[%s] %s", b.Code, b.Msg)
+	} else {
+		return b.Msg
+	}
 }
 
 func (b *Error) Format(s fmt.State, verb rune) {
@@ -112,11 +116,25 @@ func (b *Error) Unwrap() error {
 
 type Option func(*ErrorOption)
 type ErrorOption struct {
-	system     bool
-	chain      []string
-	cause      error
-	stackDepth int
-	formatArgs []any
+	code   string
+	msg    string
+	system bool
+	chain  []string
+	cause  error
+	depth  int
+	args   []any
+}
+
+func WithCode(code string) Option {
+	return func(opts *ErrorOption) {
+		opts.code = code
+	}
+}
+
+func WithMsg(msg string) Option {
+	return func(opts *ErrorOption) {
+		opts.msg = msg
+	}
 }
 
 func WithSystem() Option {
@@ -127,7 +145,7 @@ func WithSystem() Option {
 
 func WithChain(chain ...string) Option {
 	return func(opts *ErrorOption) {
-		opts.chain = chain
+		opts.chain = append(opts.chain, chain...)
 	}
 }
 
@@ -143,13 +161,13 @@ func WithStack(depth ...int) Option {
 		if len(depth) > 0 && depth[0] > 0 {
 			d = depth[0]
 		}
-		opts.stackDepth = d
+		opts.depth = d
 	}
 }
 
-func WithFormatArgs(formatArgs ...any) Option {
+func WithArgs(args ...any) Option {
 	return func(opts *ErrorOption) {
-		opts.formatArgs = formatArgs
+		opts.args = args
 	}
 }
 
@@ -158,16 +176,30 @@ func New(code string, msg string, opts ...Option) *Error {
 	return ApplyOption(e, opts...)
 }
 
-func Init(err *Error, opts ...Option) *Error {
-	e := &Error{Code: err.Code, Msg: err.Msg, System: err.System}
+func NewMsg(msg string, opts ...Option) *Error {
+	e := &Error{Msg: msg}
 	return ApplyOption(e, opts...)
 }
 
-func WrapCode(code string, err error, opts ...Option) *Error {
+func NewClone(err *Error, opts ...Option) *Error {
 	if err == nil {
 		return nil
 	}
-	e := &Error{Code: code, Msg: err.Error(), cause: err}
+	e := &Error{
+		Code:   err.Code,
+		Msg:    err.Msg,
+		System: err.System,
+		Chain:  err.Chain,
+		cause:  err.cause,
+	}
+	return ApplyOption(e, opts...)
+}
+
+func NewWrap(err error, opts ...Option) *Error {
+	if err == nil {
+		return nil
+	}
+	e := &Error{Msg: err.Error(), cause: err}
 	return ApplyOption(e, opts...)
 }
 
@@ -181,20 +213,26 @@ func ApplyOption(err *Error, opts ...Option) *Error {
 			apply(errOpt)
 		}
 	}
+	if errOpt.code != "" {
+		err.Code = errOpt.code
+	}
+	if errOpt.msg != "" {
+		err.Msg = errOpt.msg
+	}
 	if errOpt.system {
 		err.System = true
 	}
 	if len(errOpt.chain) > 0 {
-		err.Chain = strings.Join(errOpt.chain, "<-")
+		err.Chain = append(err.Chain, errOpt.chain...)
 	}
 	if errOpt.cause != nil {
 		err.cause = errOpt.cause
 	}
-	if errOpt.stackDepth != 0 {
-		err.stack = callers(3, errOpt.stackDepth)
+	if errOpt.depth != 0 {
+		err.stack = callers(3, errOpt.depth)
 	}
-	if len(errOpt.formatArgs) > 0 {
-		err.Msg = fmt.Sprintf(err.Msg, errOpt.formatArgs...)
+	if len(errOpt.args) > 0 {
+		err.Msg = fmt.Sprintf(err.Msg, errOpt.args...)
 	}
 	return err
 }
