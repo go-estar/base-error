@@ -49,6 +49,26 @@ type Error struct {
 	*stack
 }
 
+func (b *Error) WithCode(code string) *Error {
+	b.Code = code
+	return b
+}
+
+func (b *Error) WithMsg(msg string) *Error {
+	b.Msg = msg
+	return b
+}
+
+func (b *Error) WithMsgArgs(args ...any) *Error {
+	b.Msg = fmt.Sprintf(b.Msg, args...)
+	return b
+}
+
+func (b *Error) WithMsgFormat(format string, args ...any) *Error {
+	b.Msg = fmt.Sprintf(format, args...)
+	return b
+}
+
 func (b *Error) WithSystem() *Error {
 	b.System = true
 	return b
@@ -71,6 +91,10 @@ func (b *Error) WithStack(depth ...int) *Error {
 	}
 	b.stack = callers(3, d)
 	return b
+}
+
+func (b *Error) Clone(opts ...Option) *Error {
+	return Clone(b, opts...)
 }
 
 func (b *Error) Error() string {
@@ -114,10 +138,6 @@ func (b *Error) Unwrap() error {
 	return b.cause
 }
 
-func (b *Error) Clone(opts ...Option) *Error {
-	return Clone(b, opts...)
-}
-
 type Option func(*ErrorOption)
 type ErrorOption struct {
 	code    string
@@ -138,6 +158,17 @@ func WithCode(code string) Option {
 func WithMsg(msg string) Option {
 	return func(opts *ErrorOption) {
 		opts.msg = msg
+	}
+}
+func WithMsgFormat(format string, args ...any) Option {
+	return func(opts *ErrorOption) {
+		opts.msg = fmt.Sprintf(format, args...)
+	}
+}
+
+func WithMsgArgs(args ...any) Option {
+	return func(opts *ErrorOption) {
+		opts.msgArgs = args
 	}
 }
 
@@ -166,12 +197,6 @@ func WithStack(depth ...int) Option {
 			d = depth[0]
 		}
 		opts.depth = d
-	}
-}
-
-func WithMsgArgs(msgArgs ...any) Option {
-	return func(opts *ErrorOption) {
-		opts.msgArgs = msgArgs
 	}
 }
 
