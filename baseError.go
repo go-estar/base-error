@@ -114,15 +114,19 @@ func (b *Error) Unwrap() error {
 	return b.cause
 }
 
+func (b *Error) Clone(opts ...Option) *Error {
+	return Clone(b, opts...)
+}
+
 type Option func(*ErrorOption)
 type ErrorOption struct {
-	code   string
-	msg    string
-	system bool
-	chain  []string
-	cause  error
-	depth  int
-	args   []any
+	code    string
+	msg     string
+	system  bool
+	chain   []string
+	cause   error
+	depth   int
+	msgArgs []any
 }
 
 func WithCode(code string) Option {
@@ -165,23 +169,64 @@ func WithStack(depth ...int) Option {
 	}
 }
 
-func WithArgs(args ...any) Option {
+func WithMsgArgs(msgArgs ...any) Option {
 	return func(opts *ErrorOption) {
-		opts.args = args
+		opts.msgArgs = msgArgs
 	}
 }
 
-func New(code string, msg string, opts ...Option) *Error {
-	e := &Error{Code: code, Msg: msg}
-	return ApplyOption(e, opts...)
-}
-
-func NewMsg(msg string, opts ...Option) *Error {
+func New(msg string, opts ...Option) *Error {
 	e := &Error{Msg: msg}
 	return ApplyOption(e, opts...)
 }
 
-func NewClone(err *Error, opts ...Option) *Error {
+func NewSystem(msg string, opts ...Option) *Error {
+	e := &Error{Msg: msg, System: true}
+	return ApplyOption(e, opts...)
+}
+
+func NewCode(code string, msg string, opts ...Option) *Error {
+	e := &Error{Code: code, Msg: msg}
+	return ApplyOption(e, opts...)
+}
+func NewSystemCode(code string, msg string, opts ...Option) *Error {
+	e := &Error{Code: code, Msg: msg, System: true}
+	return ApplyOption(e, opts...)
+}
+
+func NewWrap(err error, opts ...Option) *Error {
+	if err == nil {
+		return nil
+	}
+	e := &Error{Msg: err.Error(), cause: err}
+	return ApplyOption(e, opts...)
+}
+
+func NewSystemWrap(err error, opts ...Option) *Error {
+	if err == nil {
+		return nil
+	}
+	e := &Error{Msg: err.Error(), cause: err, System: true}
+	return ApplyOption(e, opts...)
+}
+
+func NewCodeWrap(code string, err error, opts ...Option) *Error {
+	if err == nil {
+		return nil
+	}
+	e := &Error{Code: code, Msg: err.Error(), cause: err}
+	return ApplyOption(e, opts...)
+}
+
+func NewSystemCodeWrap(code string, err error, opts ...Option) *Error {
+	if err == nil {
+		return nil
+	}
+	e := &Error{Code: code, Msg: err.Error(), cause: err, System: true}
+	return ApplyOption(e, opts...)
+}
+
+func Clone(err *Error, opts ...Option) *Error {
 	if err == nil {
 		return nil
 	}
@@ -192,14 +237,6 @@ func NewClone(err *Error, opts ...Option) *Error {
 		Chain:  err.Chain,
 		cause:  err.cause,
 	}
-	return ApplyOption(e, opts...)
-}
-
-func NewWrap(err error, opts ...Option) *Error {
-	if err == nil {
-		return nil
-	}
-	e := &Error{Msg: err.Error(), cause: err}
 	return ApplyOption(e, opts...)
 }
 
@@ -231,8 +268,8 @@ func ApplyOption(err *Error, opts ...Option) *Error {
 	if errOpt.depth != 0 {
 		err.stack = callers(3, errOpt.depth)
 	}
-	if len(errOpt.args) > 0 {
-		err.Msg = fmt.Sprintf(err.Msg, errOpt.args...)
+	if len(errOpt.msgArgs) > 0 {
+		err.Msg = fmt.Sprintf(err.Msg, errOpt.msgArgs...)
 	}
 	return err
 }
