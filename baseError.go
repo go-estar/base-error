@@ -49,42 +49,42 @@ type Error struct {
 	*stack
 }
 
-func (b *Error) WithCode(code string) *Error {
+func (b *Error) SetCode(code string) *Error {
 	b.Code = code
 	return b
 }
 
-func (b *Error) WithMsg(msg string) *Error {
+func (b *Error) SetMsg(msg string) *Error {
 	b.Msg = msg
 	return b
 }
 
-func (b *Error) WithMsgArgs(args ...any) *Error {
+func (b *Error) SetMsgArgs(args ...any) *Error {
 	b.Msg = fmt.Sprintf(b.Msg, args...)
 	return b
 }
 
-func (b *Error) WithMsgFormat(format string, args ...any) *Error {
+func (b *Error) SetMsgFormat(format string, args ...any) *Error {
 	b.Msg = fmt.Sprintf(format, args...)
 	return b
 }
 
-func (b *Error) WithSystem() *Error {
+func (b *Error) SetSystem() *Error {
 	b.System = true
 	return b
 }
 
-func (b *Error) WithChain(chain ...string) *Error {
+func (b *Error) SetChain(chain ...string) *Error {
 	b.Chain = append(b.Chain, chain...)
 	return b
 }
 
-func (b *Error) WithCause(cause error) *Error {
+func (b *Error) SetCause(cause error) *Error {
 	b.cause = cause
 	return b
 }
 
-func (b *Error) WithStack(depth ...int) *Error {
+func (b *Error) SetStack(depth ...int) *Error {
 	var d = 3
 	if len(depth) > 0 && depth[0] > 0 {
 		d = depth[0]
