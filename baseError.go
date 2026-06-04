@@ -28,6 +28,10 @@ func getSourceDir(file string) string {
 	return filepath.ToSlash(s) + "/"
 }
 
+func Is(err error, target *Error) bool {
+	return reflect.TypeOf(err).String() == "*baseError.Error" && err.(*Error).Code == target.Code
+}
+
 func IsBaseError(err error) bool {
 	return reflect.TypeOf(err).String() == "*baseError.Error"
 }
@@ -95,6 +99,10 @@ func (b *Error) SetStack(depth ...int) *Error {
 
 func (b *Error) Clone(opts ...Option) *Error {
 	return Clone(b, opts...)
+}
+
+func (b *Error) Wrap(err error,opts ...Option) *Error {
+	return b.Clone(opts...).SetMsgArgs(err.Error()).SetCause(err)
 }
 
 func (b *Error) Error() string {
